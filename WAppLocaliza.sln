@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32228.430
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WAppLocaliza", "WAppLocaliza\WAppLocaliza.csproj", "{CFD0E2BD-59A7-4CFC-8338-631B24EEF97A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CFD0E2BD-59A7-4CFC-8338-631B24EEF97A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CFD0E2BD-59A7-4CFC-8338-631B24EEF97A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CFD0E2BD-59A7-4CFC-8338-631B24EEF97A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CFD0E2BD-59A7-4CFC-8338-631B24EEF97A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DEA3CB8E-CD91-4266-B9FF-B985231D5272}
+	EndGlobalSection
+EndGlobal
