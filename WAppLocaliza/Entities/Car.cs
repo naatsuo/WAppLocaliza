@@ -27,7 +27,7 @@ namespace WAppLocaliza.Entities
         [Required]
         [Column(TypeName = "VARCHAR(100)")]
         public string Name { get; set; }
-        public ICollection<CarBrand> CarModels { get; set; }
+        public ICollection<CarBrand> Models { get; set; }
     }
 
     public class CarModel
@@ -37,6 +37,8 @@ namespace WAppLocaliza.Entities
         public Guid Id { get; set; }
         public string Description { get; set; }
         public ICollection<Car> Cars { get; set; }
+        public CarBrand Brand { get; set; }
+
     }
 
 
@@ -54,6 +56,9 @@ namespace WAppLocaliza.Entities
         public string TrunkLimit { get; set; }
         public CategoryType Category { get; set; } 
         public DateTime CreatedAt { get; set; }
+
+        public CarModel Brand { get; set; }
+
     }
 }
 
