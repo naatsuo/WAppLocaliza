@@ -15,5 +15,19 @@ namespace WAppLocaliza.Entities
         public DateTime LastAccessAt { get; set; }
         public string[] Roles { get; set; }
     }
+
+    public class Car
+    {
+        public Guid Id { get; set; }
+        public string Plate { get; set; }
+        public string Model { get; set; }
+        public string Year { get; set; }
+        public string Price { get; set; }
+        public string PriceHour { get; set; }
+        public string Fuel { get; set; } //(gasolina, álcool, diesel)
+        public string TrunkLimit { get; set; }
+        public string Category { get; set; }  //(básico, completo, luxo)
+        public DateTime CreatedAt { get; set; }
+    }
 }
 
