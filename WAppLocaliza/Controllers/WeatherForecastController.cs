@@ -2,8 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace WAppLocaliza.Controllers
 {
-
-
     [ApiController]
     [Route("[controller]")]
     public class WeatherForecastController : ControllerBase

@@ -57,7 +57,7 @@ namespace WAppLocaliza.Entities
         public CategoryType Category { get; set; } 
         public DateTime CreatedAt { get; set; }
 
-        public CarModel Brand { get; set; }
+        public CarModel Model { get; set; }
 
     }
 }

@@ -34,7 +34,7 @@ namespace WAppLocaliza.Entities
         
         [Required]
         [JsonIgnore]
-        [Column(TypeName = "VARCHAR(64)")] // SHA512
+        [Column(TypeName = "VARCHAR(128)")] // SHA512
         public string Password { get; set; }
         public string[] Roles { get; set; }
 

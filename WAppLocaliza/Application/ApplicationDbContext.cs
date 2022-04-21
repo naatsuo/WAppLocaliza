@@ -33,7 +33,23 @@ namespace WAppLocaliza.Application
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<User>().HasIndex(i => i.Document).IsUnique();
+            modelBuilder.Entity<User>().HasIndex(i => i.Email).IsUnique();
+            modelBuilder.Entity<Operator>().HasIndex(i => i.Number).IsUnique();
+            modelBuilder.Entity<CarBrand>().HasIndex(i => i.Name).IsUnique();
+            modelBuilder.Entity<CarModel>().HasIndex(i => i.Description).IsUnique();
+            modelBuilder.Entity<Car>().HasIndex(i => i.Plate).IsUnique();
+            modelBuilder.Entity<User>().Property(i => i.Roles).HasConversion(
+               i => string.Join(';', i.Select(j => j).ToArray()),
+               i => i.Split(';', StringSplitOptions.None).Select(j => j).ToArray()
+            );
+            modelBuilder.Entity<Operator>().Property(i => i.Roles).HasConversion(
+               i => string.Join(';', i.Select(j => j).ToArray()),
+               i => i.Split(';', StringSplitOptions.None).Select(j => j).ToArray()
+            );
         }
+
         public override void Dispose()
         {
             base.Dispose();
