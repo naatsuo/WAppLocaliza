@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore.Storage;
+using System.Security.Cryptography;
+using System.Text;
 using WAppLocaliza.Application;
 using WAppLocaliza.Entities;
 
@@ -24,19 +26,27 @@ namespace WAppLocaliza.Controllers
                 {
                     using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
                     {
-                        dbContext.Operators.Add(new Operator()
+                        var bytes = Encoding.UTF8.GetBytes("test123");
+                        using (var hash = SHA512.Create())
                         {
-                            Number = "999.999.999.99",
-                            Password = "daef4953b9783365cad6615223720506cc46c5167cd16ab500fa597aa08ff964eb24fb19687f34d7665f778fcb6c5358fc0a5b81e1662cf90f73a2671c53f991",
-                            FirstName = "Administrator",
-                            LastName = "Bagaceira",
-                            CreatedAt = DateTime.Now,
-                            LastAccessAt = DateTime.Now,
-                            Roles = new string[] { "admin" },
-                        });
+                            var hashedInputBytes = hash.ComputeHash(bytes);
+                            var hashedInputStringBuilder = new StringBuilder(128);
+                            foreach (var b in hashedInputBytes)
+                                hashedInputStringBuilder.Append(b.ToString("X2"));
 
-                        dbContext.SaveChanges();
-                        transaction.Commit();
+                            dbContext.OperatorUsers.Add(new OperatorUser()
+                            {
+                                Number = "999.999.999.99",
+                                Password = hashedInputStringBuilder.ToString(),
+                                FirstName = "Administrator",
+                                LastName = "Bagaceira",
+                                CreatedAt = DateTime.UtcNow,
+                                LastAccessAt = DateTime.UtcNow,
+                                Roles = new string[] { "Administrator" },
+                            });
+                            dbContext.SaveChanges();
+                            transaction.Commit();
+                        }
                     }
 
                     return Ok(new { message = "Success" });

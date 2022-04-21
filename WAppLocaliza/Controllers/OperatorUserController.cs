@@ -7,30 +7,25 @@ namespace WAppLocaliza.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class UsersController : ControllerBase
+    public class OperatorUserController : ControllerBase
     {
         private IUserService _userService;
-        public UsersController(IUserService userService)
+        public OperatorUserController(IUserService userService)
         {
             _userService = userService;
         }
-
+      
         [HttpPost("Authenticate")]
-        public IActionResult Authenticate(AuthenticateRequest model)
+        public IActionResult Authenticate(AuthenticateOperatorUserRequest model)
         {
-            var response = _userService.Authenticate(model);
+            var response = _userService.AuthenticateOperator(model);
             if (response == null)
-                return BadRequest(new { message = "Username or password is incorrect" });
+                return BadRequest(new { message = "Number or password is incorrect" });
             return Ok(response);
         }
 
-        [HttpGet("Test")]
-        public IActionResult Test()
-        {
-            return Ok(new { message = "Test" });
-        }
 
-        [Authorize("Administrator")]
+        [AuthorizeOperatorUser("Administrator")]
         [HttpGet]
         public IActionResult GetAll()
         {

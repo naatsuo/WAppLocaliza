@@ -2,15 +2,15 @@
 
 namespace WAppLocaliza.Models
 {
-    public class AuthenticateResponse
+    public class AuthenticateOperatorUserResponse
     {
         public Guid Id { get; set; }
-        public string Document { get; set; }
+        public string Number { get; set; }
         public string Token { get; set; }
-        public AuthenticateResponse(User user, string token)
+        public AuthenticateOperatorUserResponse(OperatorUser user, string token)
         {
             Id = user.Id;
-            Document = user.Document;
+            Number = user.Number;
             Token = token;
         }
     }

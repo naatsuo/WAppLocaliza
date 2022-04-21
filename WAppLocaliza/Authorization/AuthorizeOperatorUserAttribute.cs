@@ -5,21 +5,21 @@ using WAppLocaliza.Entities;
 namespace WAppLocaliza.Authorization
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-    public class AuthorizeAttribute : Attribute, IAuthorizationFilter
+    public class AuthorizeOperatorUserAttribute : Attribute, IAuthorizationFilter
     {
         private string? _role;
-        public AuthorizeAttribute()
+        public AuthorizeOperatorUserAttribute()
         {
             _role = null;
         }
-        public AuthorizeAttribute(string role)
+        public AuthorizeOperatorUserAttribute(string role)
         {
             _role = role;
         }
         public void OnAuthorization(AuthorizationFilterContext context)
         {
-            var user = context.HttpContext.Items["User"] as User;
-            if(user == null)
+            var user = context.HttpContext.Items["User"] as OperatorUser;
+            if (user == null)
             {
                 context.Result = new JsonResult(new { message = "Unauthorized" })
                 {

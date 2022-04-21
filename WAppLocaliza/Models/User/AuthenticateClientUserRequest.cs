@@ -2,7 +2,7 @@
 
 namespace WAppLocaliza.Models
 {
-    public class AuthenticateRequest
+    public class AuthenticateClientUserRequest
     {
         [Required]
         public string Document { get; set; }

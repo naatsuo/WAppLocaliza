@@ -11,8 +11,8 @@ namespace WAppLocaliza.Application
         public DbSet<CarModel> CarModels { get; set; }
         public DbSet<Car> Cars { get; set; }
         
-        public DbSet<User> Users { get; set; }
-        public DbSet<Operator> Operators { get; set; }
+        public DbSet<ClientUser> ClientUsers { get; set; }
+        public DbSet<OperatorUser> OperatorUsers { get; set; }
 
 
         public ApplicationDbContext() { }
@@ -34,17 +34,17 @@ namespace WAppLocaliza.Application
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<User>().HasIndex(i => i.Document).IsUnique();
-            modelBuilder.Entity<User>().HasIndex(i => i.Email).IsUnique();
-            modelBuilder.Entity<Operator>().HasIndex(i => i.Number).IsUnique();
+            modelBuilder.Entity<ClientUser>().HasIndex(i => i.Document).IsUnique();
+            modelBuilder.Entity<ClientUser>().HasIndex(i => i.Email).IsUnique();
+            modelBuilder.Entity<OperatorUser>().HasIndex(i => i.Number).IsUnique();
             modelBuilder.Entity<CarBrand>().HasIndex(i => i.Name).IsUnique();
             modelBuilder.Entity<CarModel>().HasIndex(i => i.Description).IsUnique();
             modelBuilder.Entity<Car>().HasIndex(i => i.Plate).IsUnique();
-            modelBuilder.Entity<User>().Property(i => i.Roles).HasConversion(
+            modelBuilder.Entity<ClientUser>().Property(i => i.Roles).HasConversion(
                i => string.Join(';', i.Select(j => j).ToArray()),
                i => i.Split(';', StringSplitOptions.None).Select(j => j).ToArray()
             );
-            modelBuilder.Entity<Operator>().Property(i => i.Roles).HasConversion(
+            modelBuilder.Entity<OperatorUser>().Property(i => i.Roles).HasConversion(
                i => string.Join(';', i.Select(j => j).ToArray()),
                i => i.Split(';', StringSplitOptions.None).Select(j => j).ToArray()
             );
