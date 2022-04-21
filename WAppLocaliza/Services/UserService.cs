@@ -13,8 +13,8 @@ namespace WAppLocaliza.Services
     {
         private List<User> _users = new List<User>
         {
-            new User{Id = Guid.Parse("98D05E5D-4CE7-4CC1-A474-433B333135CA"), Username = "admin", Password = "admin1234", Roles = new[]{ "User", "Administrator" } },
-            new User{Id = Guid.Parse("3B1C0B4C-7867-4F95-99FD-C2A2F195FE1A"), Username = "user", Password = "user1234", Roles = new[]{ "User" } },
+            new User{Id = Guid.Parse("98D05E5D-4CE7-4CC1-A474-433B333135CA"), Document = "000.000.000-00", Password = "admin1234", Roles = new[]{ "User", "Administrator" } },
+            new User{Id = Guid.Parse("3B1C0B4C-7867-4F95-99FD-C2A2F195FE1A"), Document = "000.000.000-01", Password = "user1234", Roles = new[]{ "User" } },
         };
         private AppSettings _appSettings;
         public UserService(IOptions<AppSettings> appSettings)
@@ -24,7 +24,7 @@ namespace WAppLocaliza.Services
 
         public AuthenticateResponse? Authenticate(AuthenticateRequest model)
         {
-            var user = _users.SingleOrDefault(i => i.Username == model.Username && i.Password == model.Password);
+            var user = _users.SingleOrDefault(i => i.Document == model.Document && i.Password == model.Password);
             if (user == null) return null;
             var token = GenerateJwtToken(user);
             return new AuthenticateResponse(user, token);
