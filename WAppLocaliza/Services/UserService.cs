@@ -7,6 +7,7 @@ using System.Net.Mail;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using WAppLocaliza.Application;
 using WAppLocaliza.Configuration;
 using WAppLocaliza.Entities;
@@ -25,76 +26,62 @@ namespace WAppLocaliza.Services
 
         public AuthenticateClientUserResponse? AuthenticateClient(AuthenticateClientUserRequest model)
         {
-            try
+            using (var dbContext = new ApplicationDbContext())
             {
-                using (var dbContext = new ApplicationDbContext())
+                using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
                 {
-                    using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
+                    var bytes = Encoding.UTF8.GetBytes(model.Password);
+                    using (var hash = SHA512.Create())
                     {
-                        var bytes = Encoding.UTF8.GetBytes(model.Password);
-                        using (var hash = SHA512.Create())
-                        {
-                            var hashedInputBytes = hash.ComputeHash(bytes);
-                            var hashedInputStringBuilder = new StringBuilder(128);
-                            foreach (var b in hashedInputBytes)
-                                hashedInputStringBuilder.Append(b.ToString("X2"));
+                        var hashedInputBytes = hash.ComputeHash(bytes);
+                        var hashedInputStringBuilder = new StringBuilder(128);
+                        foreach (var b in hashedInputBytes)
+                            hashedInputStringBuilder.Append(b.ToString("X2"));
 
-                            var password = hashedInputStringBuilder.ToString();
-                            var user = dbContext.ClientUsers.SingleOrDefault(i => i.Document == model.Document && i.Password == password);
-                            if (user == null)
-                                return null;
+                        var password = hashedInputStringBuilder.ToString();
+                        var user = dbContext.ClientUsers.SingleOrDefault(i => i.Document == model.Document && i.Password == password);
+                        if (user == null)
+                            throw new UserMessageException(StatusCodes.Status400BadRequest, "Username or password is incorrect");
 
-                            user.LastAccessAt = DateTime.UtcNow;
-                            dbContext.SaveChanges();
-                            transaction.Commit();
+                        user.LastAccessAt = DateTime.Now;
+                        dbContext.SaveChanges();
+                        transaction.Commit();
 
-                            var token = GenerateJwtToken(user);
-                            return new AuthenticateClientUserResponse(user, token);
-                        }
+                        var token = GenerateJwtToken(user);
+                        return new AuthenticateClientUserResponse(user, token);
                     }
                 }
-            }
-            catch (Exception)
-            {
-                return null;
             }
         }
-
+        
         public AuthenticateOperatorUserResponse? AuthenticateOperator(AuthenticateOperatorUserRequest model)
         {
-            try
+            using (var dbContext = new ApplicationDbContext())
             {
-                using (var dbContext = new ApplicationDbContext())
+                using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
                 {
-                    using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
+                    var bytes = Encoding.UTF8.GetBytes(model.Password);
+                    using (var hash = SHA512.Create())
                     {
-                        var bytes = Encoding.UTF8.GetBytes(model.Password);
-                        using (var hash = SHA512.Create())
-                        {
-                            var hashedInputBytes = hash.ComputeHash(bytes);
-                            var hashedInputStringBuilder = new StringBuilder(128);
-                            
-                            foreach (var b in hashedInputBytes)
-                                hashedInputStringBuilder.Append(b.ToString("X2"));
+                        var hashedInputBytes = hash.ComputeHash(bytes);
+                        var hashedInputStringBuilder = new StringBuilder(128);
 
-                            var password = hashedInputStringBuilder.ToString();
-                            var user = dbContext.OperatorUsers.SingleOrDefault(i => i.Number == model.Number && i.Password == password);
-                            if (user == null)
-                                return null;
+                        foreach (var b in hashedInputBytes)
+                            hashedInputStringBuilder.Append(b.ToString("X2"));
 
-                            user.LastAccessAt = DateTime.UtcNow;
-                            dbContext.SaveChanges();
-                            transaction.Commit();
+                        var password = hashedInputStringBuilder.ToString();
+                        var user = dbContext.OperatorUsers.SingleOrDefault(i => i.Number == model.Number && i.Password == password);
+                        if (user == null)
+                            throw new UserMessageException(StatusCodes.Status400BadRequest, "Username or password is incorrect");
 
-                            var token = GenerateJwtToken(user);
-                            return new AuthenticateOperatorUserResponse(user, token);
-                        }
+                        user.LastAccessAt = DateTime.Now;
+
+                        var token = GenerateJwtToken(user);
+                        dbContext.SaveChanges();
+                        transaction.Commit();
+                        return new AuthenticateOperatorUserResponse(user, token);
                     }
                 }
-            }
-            catch (Exception)
-            {
-                return null;
             }
         }
 
@@ -105,7 +92,7 @@ namespace WAppLocaliza.Services
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[] { new Claim("id", user.Id.ToString()) }),
-                Expires = DateTime.UtcNow.AddMinutes(5),
+                Expires = DateTime.UtcNow.AddMinutes(10),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
             };
             var token = tokenHandler.CreateToken(tokenDescriptor);
@@ -139,7 +126,7 @@ namespace WAppLocaliza.Services
                         return clientUser;
                     else if (operatorUser is not null)
                         return operatorUser;
-                    else 
+                    else
                         return null;
                 }
             }
@@ -148,6 +135,7 @@ namespace WAppLocaliza.Services
                 return null;
             }
         }
+        
         public User? GetOperatorById(Guid userId)
         {
             try
@@ -163,106 +151,87 @@ namespace WAppLocaliza.Services
             }
         }
 
-        public int CreateClient(CreateClientUserRequest model)
+        public void CreateClient(CreateClientUserRequest model)
         {
-            //  0 = Ok
-            // -1 = Email invalid
-            // -2 = First name invalid
-            // -3 = Last name invalid
-            // -4 = Document invalid
-            // -5 = Password is too small
-            // -6 = Password is too big
-            // -7 = Document is already being used
-            // -100 = Other
-
-            // Check Email
-            try
-            {
-                MailAddress m = new MailAddress(model.Email);
-            }
-            catch (FormatException)
-            {
-                return -1;
-            }
-
-            // Check First Name
-            if (model.FirstName.Length <= 1)
-                return -2;
-            // Check Last Name
+            if (!IsValidEmail(model.Email))
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Email invalid");
+            else if (model.FirstName.Length <= 1)
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "First name invalid");
             else if (model.LastName.Length <= 1)
-                return -3;
-            // Check Document - CPF
-            else if (model.Document.Length != 14)
-                return -4;
-            // Check Password is too small
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Last name invalid");
+            else if (!IsValidDocument(model.Document))
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Document invalid");
             else if (model.Password.Length <= 4)
-                return -5;
-            // Check Password is too big
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Password is too small");
             else if (model.Password.Length >= 20)
-                return -6;
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Password is too big");
             else
             {
-                try
+                using (var dbContext = new ApplicationDbContext())
                 {
-                    using (var dbContext = new ApplicationDbContext())
+                    using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
                     {
-                        using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
+                        if (dbContext.ClientUsers.SingleOrDefault(i => i.Document == model.Document) is not null)
+                            throw new UserMessageException(StatusCodes.Status400BadRequest, "Document is already being used");
+
+                        var bytes = Encoding.UTF8.GetBytes(model.Password);
+                        using (var hash = SHA512.Create())
                         {
-                            if (dbContext.ClientUsers.SingleOrDefault(i => i.Document == model.Document) is not null)
-                                return -7;
+                            var hashedInputBytes = hash.ComputeHash(bytes);
+                            var hashedInputStringBuilder = new StringBuilder(128);
+                            foreach (var b in hashedInputBytes)
+                                hashedInputStringBuilder.Append(b.ToString("X2"));
 
-                            var bytes = Encoding.UTF8.GetBytes(model.Password);
-                            using (var hash = SHA512.Create())
+                            dbContext.ClientUsers.Add(new ClientUser()
                             {
-                                var hashedInputBytes = hash.ComputeHash(bytes);
-                                var hashedInputStringBuilder = new StringBuilder(128);
-                                foreach (var b in hashedInputBytes)
-                                    hashedInputStringBuilder.Append(b.ToString("X2"));
+                                Document = model.Document,
+                                Password = hashedInputStringBuilder.ToString(),
+                                FirstName = model.FirstName,
+                                LastName = model.LastName,
+                                Email = model.Email,
+                                CreatedAt = DateTime.Now,
+                                LastAccessAt = DateTime.Now,
+                                Roles = new string[] { "Common" },
+                            });
 
-                                dbContext.ClientUsers.Add(new ClientUser()
-                                {
-                                    Document = model.Document,
-                                    Password = hashedInputStringBuilder.ToString(),
-                                    FirstName = model.FirstName,
-                                    LastName = model.LastName,
-                                    Email = model.Email,
-                                    CreatedAt = DateTime.UtcNow,
-                                    LastAccessAt = DateTime.UtcNow,
-                                    Roles = new string[] { "Common" },
-                                });
-
-                                dbContext.SaveChanges();
-                                transaction.Commit();
-                                return 0;
-                            }
+                            dbContext.SaveChanges();
+                            transaction.Commit();
                         }
                     }
-                }
-                catch
-                {
-                    return -100;
                 }
             }
         }
 
-        public int CreateBrand(CreateBrandRequest model)
+        private bool IsValidEmail(string email)
         {
-            //  0 = Ok
-            // -1 = Check Name is too small
-            // -2 = Name is already being used
-            // -100 = Other
-
-            // Check First Name
-            if (model.Name.Length <= 1)
-                return -1;
             try
+            {
+                MailAddress m = new MailAddress(email);
+                return true;
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+        }
+
+        private bool IsValidDocument(string document)
+        {
+            return Regex.IsMatch(document, @"^\d{3}\.\d{3}\.\d{3}\-\d{2}$");
+        }
+
+        public void CreateBrand(CreateBrandRequest model)
+        {
+            if (model.Name.Length <= 1)
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Name is too small");
+            else
             {
                 using (var dbContext = new ApplicationDbContext())
                 {
                     using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
                     {
                         if (dbContext.CarBrands.SingleOrDefault(i => i.Name == model.Name) is not null)
-                            return -2;
+                            throw new UserMessageException(StatusCodes.Status400BadRequest, "Name is already being used");
 
                         dbContext.CarBrands.Add(new CarBrand()
                         {
@@ -272,35 +241,21 @@ namespace WAppLocaliza.Services
 
                         dbContext.SaveChanges();
                         transaction.Commit();
-                        return 0;
                     }
                 }
             }
-            catch
-            {
-                return -100;
-            }
         }
 
-        public int CreateModel(CreateModelRequest model)
+        public void CreateModel(CreateModelRequest model)
         {
-            //  0 = Ok
-            // -1 = Invalid brand
-            // -2 = Unknow brand
-            // -3 = Description is too small
-            // -4 = Description is already being used
-            // -100 = Other
-
             Guid brandId = Guid.Empty;
             bool isValid = Guid.TryParse(model.BrandId.ToString(), out brandId);
 
-            // Invalid Brand
             if (!isValid)
-                return -1;
-            // Description is too small
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid brand");
             else if (model.Description.Length <= 1)
-                return -3;
-            try
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Description is too small");
+            else
             {
                 using (var dbContext = new ApplicationDbContext())
                 {
@@ -311,13 +266,11 @@ namespace WAppLocaliza.Services
                             .Include(i => i.Models)
                             .SingleOrDefault(i => i.Id == brandId);
                         if (carBrand is null)
-                            return -2;
+                            throw new UserMessageException(StatusCodes.Status400BadRequest, "Unknow brand");
 
-                        // Description is already being used
-                        var carModel = dbContext.CarModels
-                            .SingleOrDefault(i => i.Description == model.Description);
+                        var carModel = dbContext.CarModels.SingleOrDefault(i => i.Description == model.Description);
                         if (carModel is not null)
-                            return -4;
+                            throw new UserMessageException(StatusCodes.Status400BadRequest, " Description is already being used");
 
                         carBrand.Models.Add(new CarModel()
                         {
@@ -328,86 +281,59 @@ namespace WAppLocaliza.Services
 
                         dbContext.SaveChanges();
                         transaction.Commit();
-                        return 0;
                     }
                 }
-            }
-            catch
-            {
-                return -100;
             }
         }
 
-        public int CreateCar(CreateCarRequest model)
+        public void CreateCar(CreateCarRequest model)
         {
-            //  0 = Ok
-            // -1 = Invalid model
-            // -2 = Unknow model
-            // -3 = Plate is too small
-            // -4 = Plate is already being used
-            // -5 = Years out range
-            // -6 = Invalid price hour
-            // -7 = Invalid fuel -
-            // -8 = Invalid Trunk limit 
-            // -9 = invalid Category -
-            // -100 = Other
-
             Guid modelId = Guid.Empty;
             bool isValid = Guid.TryParse(model.ModelId.ToString(), out modelId);
 
-            // Invalid Brand
             if (!isValid)
-                return -1;
-            // Len plate
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid model");
             else if (model.Plate.Length <= 4)
-                return -3;
-            // Range year
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Plate is too small");
             else if (model.Year < 1886 || model.Year >= (DateTime.Now.Year + 2))
-                return -5;
-            // Invalid price hour
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Years out range");
             else if (model.PriceHour <= 0.0f)
-                return -6;
-            // Invalid Trunk limit 
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid price hour");
             else if (model.TrunkLimit < 0)
-                return -8;
-            try
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid trunk limit");
+            else if (model.PercentagePenalty <= 0 || model.PercentagePenalty >= 100)
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid percentage penalty");
+
+            using (var dbContext = new ApplicationDbContext())
             {
-                using (var dbContext = new ApplicationDbContext())
+                using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
                 {
-                    using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
+                    var carModel = dbContext.CarModels
+                        .Include(i => i.Cars)
+                        .SingleOrDefault(i => i.Id == modelId);
+                    if (carModel is null)
+                        throw new UserMessageException(StatusCodes.Status400BadRequest, "Unknow model");
+
+                    var car = dbContext.Cars.SingleOrDefault(i => i.Plate == model.Plate);
+                    if (car is not null)
+                        throw new UserMessageException(StatusCodes.Status400BadRequest, "Plate is already being used");
+
+                    carModel.Cars.Add(new Car()
                     {
-                        //Unknow model
-                        var carModel = dbContext.CarModels
-                            .Include(i => i.Cars)
-                            .SingleOrDefault(i => i.Id == modelId);
-                        if (carModel is null)
-                            return -2;
+                        Plate = model.Plate,
+                        Year = model.Year,
+                        PriceHour = model.PriceHour,
+                        Fuel = model.Fuel,
+                        TrunkLimit = model.TrunkLimit,
+                        CreatedAt = DateTime.Now,
+                        PercentagePenalty = model.PercentagePenalty,
+                        Schedules = new List<CarSchedule>(),
+                        Histories = new List<CarHistory>(),
+                    });
 
-                        // plate is already being used
-                        var car = dbContext.Cars.SingleOrDefault(i => i.Plate == model.Plate);
-                        if (car is not null)
-                            return -4;
-
-                        carModel.Cars.Add(new Car()
-                        {
-                            Plate = model.Plate,
-                            Year = model.Year,
-                            PriceHour = model.PriceHour,
-                            Fuel = model.Fuel,
-                            TrunkLimit = model.TrunkLimit,
-                            CreatedAt = DateTime.UtcNow,
-                            Histories = new List<CarHistory>()
-                        });
-
-                        dbContext.SaveChanges();
-                        transaction.Commit();
-                        return 0;
-                    }
+                    dbContext.SaveChanges();
+                    transaction.Commit();
                 }
-            }
-            catch
-            {
-                return -100;
             }
         }
 
@@ -419,6 +345,7 @@ namespace WAppLocaliza.Services
                 {
                     return dbContext.CarBrands
                         .Include(i => i.Models)
+                        .ThenInclude(i => i.Cars)
                         .ToList();
                 }
             }
@@ -453,6 +380,7 @@ namespace WAppLocaliza.Services
                 using (var dbContext = new ApplicationDbContext())
                 {
                     return dbContext.Cars
+                        .Include(i => i.Schedules)
                         .Include(i => i.Model)
                         .ThenInclude(i => i.Brand)
                         .Include(i => i.Histories)
@@ -465,5 +393,194 @@ namespace WAppLocaliza.Services
                 return null;
             }
         }
+
+        public SimulateCarResponse? SimulateCar(SimulateCarRequest model)
+        {
+            if (model.Start <= DateTime.Now)
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid start date");
+            else if ((model.End - model.Start).TotalHours < 12)
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid end date");
+            else
+            {
+                using (var dbContext = new ApplicationDbContext())
+                {
+                    var car = dbContext.Cars
+                        .Include(i => i.Schedules)
+                        .SingleOrDefault(i => i.Id == model.CarId);
+                    if (car is null)
+                        throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid car");
+
+                    var hourTotal = (model.End - model.Start).TotalHours;
+                    var available = !car.Schedules.Any(i => model.Start >= i.Start && model.Start <= i.End);
+
+                    return new SimulateCarResponse()
+                    {
+                        CarId = model.CarId,
+                        PriceHour = car.PriceHour,
+                        PriceTotal = (float)(car.PriceHour * hourTotal),
+                        HourTotal = hourTotal,
+                        Available = available,
+                        Start = model.Start,
+                        End = model.End
+                    };
+                }
+            }
+        }
+
+        public ScheduleCarResponse? ScheduleCar(ScheduleCarRequest model)
+        {
+            if (model.Start <= DateTime.Now)
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid start date");
+            else if ((model.End - model.Start).TotalHours < 12)
+                throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid end date");
+            else
+            {
+                using (var dbContext = new ApplicationDbContext())
+                {
+                    using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
+                    {
+                        var car = dbContext.Cars
+                        .Include(i => i.Schedules)
+                        .SingleOrDefault(i => i.Id == model.CarId);
+                        if (car is null)
+                            throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid car");
+
+                        var user = dbContext.ClientUsers.SingleOrDefault(i => i.Id == model.ClientId);
+                        if (user is null)
+                            throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid user");
+
+                        var hourTotal = (model.End - model.Start).TotalHours;
+                        var available = !car.Schedules.Any(i => model.Start >= i.Start && model.Start <= i.End);
+
+                        if (!available)
+                            throw new UserMessageException(StatusCodes.Status400BadRequest, "Car not available for schedule");
+                        else
+                        {
+                            var schedule = new CarSchedule()
+                            {
+                                Start = model.Start,
+                                End = model.End,
+                                Price = (float)(car.PriceHour * hourTotal),
+                                Note = model.Note,
+                                Client = user
+                            };
+
+                            car.Schedules.Add(schedule);
+
+                            dbContext.SaveChanges();
+                            transaction.Commit();
+
+                            return new ScheduleCarResponse()
+                            {
+                                ScheduleId = schedule.Id,
+                                PriceHour = car.PriceHour,
+                                PriceTotal = (float)(car.PriceHour * hourTotal),
+                                HourTotal = hourTotal,
+                                Start = model.Start,
+                                End = model.End
+                            };
+                        }
+                    }
+                }
+            }
+        }
+
+        public void WithdrawCar(WithdrawCarRequest model)
+        {
+            using (var dbContext = new ApplicationDbContext())
+            {
+                using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
+                {
+                    var user = dbContext.ClientUsers.SingleOrDefault(i => i.Id == model.ClientId);
+                    if (user is null)
+                        throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid user");
+
+                    var schedule = dbContext.CarSchedules.SingleOrDefault(i => i.Id == model.ScheduleId);
+                    if (schedule is null)
+                        throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid schedule");
+
+                    if (model.WithdrawdAt <= DateTime.Now)
+                        throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid withdraw date");
+
+                    schedule.WithdrawdAt = model.WithdrawdAt;
+
+                    dbContext.SaveChanges();
+                    transaction.Commit();
+                }
+            }
+        }
+
+        public ReturnedCarResponse? ReturnedCar(ReturnedCarRequest model)
+        {
+            using (var dbContext = new ApplicationDbContext())
+            {
+                using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
+                {
+                    var schedule = dbContext.CarSchedules
+                        .Include(i => i.Client)
+                        .Include(i => i.Car)
+                        .ThenInclude(i => i.Histories)
+                        .SingleOrDefault(i => i.Id == model.ScheduleId);
+
+                    if (schedule is null)
+                        throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid schedule");
+
+                    if (model.ReturnedAt <= DateTime.Now)
+                        throw new UserMessageException(StatusCodes.Status400BadRequest, "Invalid returned date");
+
+                    schedule.ReturnedAt = model.ReturnedAt;
+
+                    var realHours = ((DateTime)schedule.ReturnedAt - (DateTime)schedule.WithdrawdAt).TotalHours;
+                    var scheduleHours = (schedule.End - schedule.Start).TotalHours;
+
+                    var penaltyPrice = 0.0f;
+                    if (!model.Clean)
+                        penaltyPrice += (schedule.Car.PercentagePenalty / 100) * schedule.Price;
+                    else if (!model.FuelTankFull)
+                        penaltyPrice += (schedule.Car.PercentagePenalty / 100) * schedule.Price;
+                    else if (!model.Dented)
+                        penaltyPrice += (schedule.Car.PercentagePenalty / 100) * schedule.Price;
+                    else if (!model.Scratched)
+                        penaltyPrice += (schedule.Car.PercentagePenalty / 100) * schedule.Price;
+
+                    schedule.RealPrice = (float)(schedule.Car.PriceHour * realHours);
+
+                    var checkList = new CarCheckList()
+                    {
+                        Clean = model.Clean,
+                        FuelTankFull = model.FuelTankFull,
+                        Dented = model.Dented,
+                        Scratched = model.Scratched,
+                    };
+
+                    var history = new CarHistory()
+                    {
+                        Start = schedule.Start,
+                        End = schedule.End,
+                        CheckList = checkList,
+                        Price = schedule.Price,
+                        PenaltyPrice = penaltyPrice,
+                        Note = schedule.Note,
+                        Client = schedule.Client,
+                    };
+
+                    schedule.Car.Histories.Add(history);
+
+                    dbContext.SaveChanges();
+                    transaction.Commit();
+
+                    return new ReturnedCarResponse()
+                    {
+                        ScheduleId = schedule.Id,
+                        HistoryId = history.Id,
+                        Price = schedule.Price,
+                        PricePenalty = penaltyPrice,
+                        PriceTotal = schedule.Price + penaltyPrice,
+                        HourTotal = scheduleHours
+                    };
+                }
+            }
+        }
+
     }
 }

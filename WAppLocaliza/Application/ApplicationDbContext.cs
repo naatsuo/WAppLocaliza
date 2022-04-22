@@ -10,10 +10,11 @@ namespace WAppLocaliza.Application
         public DbSet<CarBrand> CarBrands { get; set; }
         public DbSet<CarModel> CarModels { get; set; }
         public DbSet<Car> Cars { get; set; }
-        
+        public DbSet<CarCheckList> CarChecklists { get; set; }
+        public DbSet<CarSchedule> CarSchedules { get; set; }
+        public DbSet<CarHistory> CarHistories { get; set; }
         public DbSet<ClientUser> ClientUsers { get; set; }
         public DbSet<OperatorUser> OperatorUsers { get; set; }
-
 
         public ApplicationDbContext() { }
 

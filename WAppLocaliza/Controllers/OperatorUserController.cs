@@ -6,7 +6,6 @@ using WAppLocaliza.Services;
 
 namespace WAppLocaliza.Controllers
 {
-
     [ApiController]
     [Route("[controller]")]
     public class OperatorUserController : ControllerBase
@@ -20,41 +19,44 @@ namespace WAppLocaliza.Controllers
         [HttpPost("Authenticate")]
         public IActionResult Authenticate(AuthenticateOperatorUserRequest model)
         {
-            var response = _userService.AuthenticateOperator(model);
-            if (response == null)
-                return BadRequest(new { success = false, message = "Number or password is incorrect" });
-            return Ok(response);
+            try
+            {
+                var response = _userService.AuthenticateOperator(model);
+                if (response is not null)
+                    return Ok(response);
+                else
+                    return new ObjectResult(new { success = false }) { StatusCode = StatusCodes.Status400BadRequest };
+            }
+            catch (UserMessageException ex)
+            {
+                return new ObjectResult(new { success = false, message = ex.Message }) { StatusCode = ex.StatusCode };
+            }
+            catch
+            {
+                return new ObjectResult(new { success = false, message = "Internal Server Error" }) { StatusCode = StatusCodes.Status500InternalServerError };
+            }
         }
 
         /*
-       cadastrar/buscar marca
-       cadastrar/buscar modelo na marca
-       cadastrar/buscar carro no modelo
-
-       simulação de locação
-       agendamento de um veiculo
-       gerar um pdf com as informãções do banco
-
-       checklist de devolução
+           gerar um pdf com as informãções do banco
        */
 
         [AuthorizeOperatorUser]
         [HttpPost("CreateBrand")]
         public IActionResult CreateBrand(CreateBrandRequest model)
         {
-            var response = _userService.CreateBrand(model);
-            switch (response)
+            try
             {
-                case 0:
-                    return Ok(new { success = true });
-                case -1:
-                    return BadRequest(new { success = false, message = "Name is too small" });
-                case -2:
-                    return BadRequest(new { success = false, message = "Name is already being used" });
-                case -100:
-                    return BadRequest(new { success = false, message = "Internal error" });
-                default:
-                    return BadRequest(new { success = false });
+                _userService.CreateBrand(model);
+                return Ok(new { success = true });
+            }
+            catch (UserMessageException ex)
+            {
+                return new ObjectResult(new { success = false, message = ex.Message }) { StatusCode = ex.StatusCode };
+            }
+            catch
+            {
+                return new ObjectResult(new { success = false, message = "Internal Server Error" }) { StatusCode = StatusCodes.Status500InternalServerError };
             }
         }
 
@@ -62,23 +64,18 @@ namespace WAppLocaliza.Controllers
         [HttpPost("CreateModel")]
         public IActionResult CreateModel(CreateModelRequest model)
         {
-            var response = _userService.CreateModel(model);
-            switch (response)
+            try
             {
-                case 0:
-                    return Ok(new { success = true });
-                case -1:
-                    return BadRequest(new { success = false, message = "Invalid brand" });
-                case -2:
-                    return BadRequest(new { success = false, message = "Unknow brand" });
-                case -3:
-                    return BadRequest(new { success = false, message = "Description is too small" });
-                case -4:
-                    return BadRequest(new { success = false, message = "Description is already being used" });
-                case -100:
-                    return BadRequest(new { success = false, message = "Internal error" });
-                default:
-                    return BadRequest(new { success = false });
+                _userService.CreateModel(model);
+                return Ok(new { success = true });
+            }
+            catch (UserMessageException ex)
+            {
+                return new ObjectResult(new { success = false, message = ex.Message }) { StatusCode = ex.StatusCode };
+            }
+            catch
+            {
+                return new ObjectResult(new { success = false, message = "Internal Server Error" }) { StatusCode = StatusCodes.Status500InternalServerError };
             }
         }
 
@@ -86,33 +83,18 @@ namespace WAppLocaliza.Controllers
         [HttpPost("CreateCar")]
         public IActionResult CreateCar(CreateCarRequest model)
         {
-            var response = _userService.CreateCar(model);
-            switch (response)
+            try
             {
-                case 0:
-                    return Ok(new { success = true });
-                case -1:
-                    return BadRequest(new { success = false, message = "Invalid model" });
-                case -2:
-                    return BadRequest(new { success = false, message = "Unknow model" });
-                case -3:
-                    return BadRequest(new { success = false, message = "Plate is too small" });
-                case -4:
-                    return BadRequest(new { success = false, message = "Plate is already being used" });
-                case -5:
-                    return BadRequest(new { success = false, message = "Years out range" });
-                case -6:
-                    return BadRequest(new { success = false, message = "Invalid price hour" });
-                case -7: //
-                    return BadRequest(new { success = false });
-                case -8:
-                    return BadRequest(new { success = false, message = "Invalid Trunk limit" });
-                case -9: //
-                    return BadRequest(new { success = false });
-                case -100:
-                    return BadRequest(new { success = false, message = "Internal error" });
-                default:
-                    return BadRequest(new { success = false });
+                _userService.CreateCar(model);
+                return Ok(new { success = true });
+            }
+            catch (UserMessageException ex)
+            {
+                return new ObjectResult(new { success = false, message = ex.Message }) { StatusCode = ex.StatusCode };
+            }
+            catch
+            {
+                return new ObjectResult(new { success = false, message = "Internal Server Error" }) { StatusCode = StatusCodes.Status500InternalServerError };
             }
         }
 
@@ -140,14 +122,67 @@ namespace WAppLocaliza.Controllers
             return Ok(cars);
         }
 
-
-
-        [AuthorizeOperatorUser("Administrator")]
-        [HttpGet]
-        public IActionResult GetAll()
+        [AuthorizeOperatorUser]
+        [HttpPost("SimulateCar")]
+        public IActionResult SimulateCar(SimulateCarRequest model)
         {
-            var users = _userService.GetAll();
-            return Ok(users);
+            try
+            {
+                var response = _userService.SimulateCar(model);
+                if (response != null)
+                    return Ok(response);
+                else
+                    return new ObjectResult(new { success = false }) { StatusCode = StatusCodes.Status400BadRequest };
+            }
+            catch (UserMessageException ex)
+            {
+                return new ObjectResult(new { success = false, message = ex.Message }) { StatusCode = ex.StatusCode };
+            }
+            catch
+            {
+                return new ObjectResult(new { success = false, message = "Internal Server Error" }) { StatusCode = StatusCodes.Status500InternalServerError };
+            }
+        }
+
+        [AuthorizeOperatorUser]
+        [HttpPost("WithdrawCar")]
+        public IActionResult WithdrawCar(WithdrawCarRequest model)
+        {
+            try
+            {
+                _userService.WithdrawCar(model);
+                return Ok(new { success = true });
+            }
+            catch (UserMessageException ex)
+            {
+                return new ObjectResult(new { success = false, message = ex.Message }) { StatusCode = ex.StatusCode };
+            }
+            catch
+            {
+                return new ObjectResult(new { success = false, message = "Internal Server Error" }) { StatusCode = StatusCodes.Status500InternalServerError };
+            }
+        }
+
+        [AuthorizeOperatorUser]
+        [HttpPost("ReturnedCar")]
+        public IActionResult ReturnedCar(ReturnedCarRequest model)
+        {
+            try
+            {
+                var response = _userService.ReturnedCar(model);
+                if (response != null)
+                    return Ok(response);
+                else
+                    return new ObjectResult(new { success = false }) { StatusCode = StatusCodes.Status400BadRequest };
+            }
+            catch (UserMessageException ex)
+            {
+                return new ObjectResult(new { success = false, message = ex.Message }) { StatusCode = ex.StatusCode };
+            }
+            catch
+            {
+                return new ObjectResult(new { success = false, message = "Internal Server Error" }) { StatusCode = StatusCodes.Status500InternalServerError };
+            }
         }
     }
 }

@@ -9,23 +9,32 @@ namespace WAppLocaliza.Services
         
         AuthenticateOperatorUserResponse? AuthenticateOperator(AuthenticateOperatorUserRequest model);
         
-        int CreateClient(CreateClientUserRequest model);
+        void CreateClient(CreateClientUserRequest model);
         
         IEnumerable<ClientUser>? GetAll();
         
         User? GetUserById(Guid userId);
 
-        int CreateBrand(CreateBrandRequest model);
+        void CreateBrand(CreateBrandRequest model);
+
+        void CreateModel(CreateModelRequest model);
         
-        int CreateModel(CreateModelRequest model);
-        
-        int CreateCar(CreateCarRequest model);
+        void CreateCar(CreateCarRequest model);
 
         IEnumerable<CarBrand>? GetAllBrand();
         
         IEnumerable<CarModel>? GetAllModel();
         
         IEnumerable<Car>? GetAllCar();
+
+        SimulateCarResponse? SimulateCar(SimulateCarRequest model);
+
+        ScheduleCarResponse? ScheduleCar(ScheduleCarRequest model);
+
+        void WithdrawCar(WithdrawCarRequest model);
+
+        ReturnedCarResponse? ReturnedCar(ReturnedCarRequest model);
+
 
     }
 }

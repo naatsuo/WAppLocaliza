@@ -42,10 +42,11 @@ namespace WAppLocaliza.Entities
         public float PercentagePenalty { get; set; }
         [Required]
         public DateTime CreatedAt { get; set; }
+        
         [Column(TypeName = "VARCHAR(MAX)")]
         public string Note;
-        public DateTime? Start { get; set; }
-        public DateTime? End { get; set; }
+        
+        public ICollection<CarSchedule> Schedules { get; set; }
         public ICollection<CarHistory> Histories { get; set; }
         [JsonIgnore]
         public CarModel Model { get; set; }

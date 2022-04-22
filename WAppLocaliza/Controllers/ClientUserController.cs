@@ -18,38 +18,39 @@ namespace WAppLocaliza.Controllers
         [HttpPost("Authenticate")]
         public IActionResult Authenticate(AuthenticateClientUserRequest model)
         {
-            var response = _userService.AuthenticateClient(model);
-            if (response == null)
-                return BadRequest(new { success = false, message = "Username or password is incorrect" });
-            return Ok(response);
+            try
+            {
+                var response = _userService.AuthenticateClient(model);
+                if (response is not null)
+                    return Ok(response);
+                else
+                    return new ObjectResult(new { success = false }) { StatusCode = StatusCodes.Status400BadRequest };
+            }
+            catch (UserMessageException ex)
+            {
+                return new ObjectResult(new { success = false, message = ex.Message }) { StatusCode = ex.StatusCode };
+            }
+            catch
+            {
+                return new ObjectResult(new { success = false, message = "Internal Server Error" }) { StatusCode = StatusCodes.Status500InternalServerError };
+            }
         }
 
         [HttpPost("Create")]
         public IActionResult Create(CreateClientUserRequest model)
         {
-            var response = _userService.CreateClient(model);
-            switch (response)
+            try
             {
-                case 0:
-                    return Ok(new { success = true });
-                case -1:
-                    return BadRequest(new { success = false, message = "Email invalid" });
-                case -2:
-                    return BadRequest(new { success = false, message = "First name invalid" });
-                case -3:
-                    return BadRequest(new { success = false, message = "Last name invalid" });
-                case -4:
-                    return BadRequest(new { success = false, message = "Document invalid" });
-                case -5:
-                    return BadRequest(new { success = false, message = "Password is too small" });
-                case -6:
-                    return BadRequest(new { success = false, message = "Password is too big" });
-                case -7:
-                    return BadRequest(new { success = false, message = "Document is already being used" });
-                case -100:
-                    return BadRequest(new { success = false, message = "Internal error" });
-                default:
-                    return BadRequest(new { success = false });
+                _userService.CreateClient(model);
+                return Ok(new { success = true });
+            }
+            catch (UserMessageException ex)
+            {
+                return new ObjectResult(new { success = false, message = ex.Message }) { StatusCode = ex.StatusCode };
+            }
+            catch
+            {
+                return new ObjectResult(new { success = false, message = "Internal Server Error" }) { StatusCode = StatusCodes.Status500InternalServerError };
             }
         }
 
@@ -77,5 +78,48 @@ namespace WAppLocaliza.Controllers
             return Ok(cars);
         }
 
+        [AuthorizeClientUser]
+        [HttpPost("SimulateCar")]
+        public IActionResult SimulateCar(SimulateCarRequest model)
+        {
+            try
+            {
+                var response = _userService.SimulateCar(model);
+                if (response != null)
+                    return Ok(response);
+                else
+                    return new ObjectResult(new { success = false }) { StatusCode = StatusCodes.Status400BadRequest };
+            }
+            catch (UserMessageException ex)
+            {
+                return new ObjectResult(new { success = false, message = ex.Message }) { StatusCode = ex.StatusCode };
+            }
+            catch
+            {
+                return new ObjectResult(new { success = false, message = "Internal Server Error" }) { StatusCode = StatusCodes.Status500InternalServerError };
+            }
+        }
+
+        [AuthorizeClientUser]
+        [HttpPost("ScheduleCar")]
+        public IActionResult ScheduleCar(ScheduleCarRequest model)
+        {
+            try
+            {
+                var response = _userService.ScheduleCar(model);
+                if (response != null)
+                    return Ok(response);
+                else
+                    return new ObjectResult(new { success = false }) { StatusCode = StatusCodes.Status400BadRequest };
+            }
+            catch (UserMessageException ex)
+            {
+                return new ObjectResult(new { success = false, message = ex.Message }) { StatusCode = ex.StatusCode };
+            }
+            catch
+            {
+                return new ObjectResult(new { success = false, message = "Internal Server Error" }) { StatusCode = StatusCodes.Status500InternalServerError };
+            }
+        }
     }
 }

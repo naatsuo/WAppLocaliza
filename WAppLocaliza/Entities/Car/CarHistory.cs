@@ -8,6 +8,7 @@ namespace WAppLocaliza.Entities
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public Guid Id { get; set; }
+        
         [Required]
         public DateTime Start { get; set; }
         [Required]
@@ -20,6 +21,9 @@ namespace WAppLocaliza.Entities
         public CarCheckList CheckList { get; set; }
         [Column(TypeName = "VARCHAR(MAX)")]
         public string Note { get; set; }
+
+        [Required]
+        public ClientUser Client { get; set; }
     }
 }
 

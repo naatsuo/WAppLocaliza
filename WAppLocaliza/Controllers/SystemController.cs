@@ -40,8 +40,8 @@ namespace WAppLocaliza.Controllers
                                 Password = hashedInputStringBuilder.ToString(),
                                 FirstName = "Administrator",
                                 LastName = "Bagaceira",
-                                CreatedAt = DateTime.UtcNow,
-                                LastAccessAt = DateTime.UtcNow,
+                                CreatedAt = DateTime.Now,
+                                LastAccessAt = DateTime.Now,
                                 Roles = new string[] { "Administrator" },
                             });
                             dbContext.SaveChanges();

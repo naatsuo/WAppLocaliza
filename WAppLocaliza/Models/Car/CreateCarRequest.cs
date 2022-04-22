@@ -20,6 +20,6 @@ namespace WAppLocaliza.Models
         [Required]
         public CategoryType Category { get; set; }
         [Required]
-        public float PercentagePenalty { get; set; } = 30.0f;
+        public float PercentagePenalty { get; set; }
     }
 }
