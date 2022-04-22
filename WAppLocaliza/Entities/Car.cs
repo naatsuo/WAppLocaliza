@@ -19,46 +19,34 @@ namespace WAppLocaliza.Entities
         Deluxe
     }
 
-    public class CarBrand
-    {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public Guid Id { get; set; }
-        [Required]
-        [Column(TypeName = "VARCHAR(100)")]
-        public string Name { get; set; }
-        public ICollection<CarBrand> Models { get; set; }
-    }
-
-    public class CarModel
-    {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public Guid Id { get; set; }
-        public string Description { get; set; }
-        public ICollection<Car> Cars { get; set; }
-        public CarBrand Brand { get; set; }
-
-    }
-
-
     public class Car
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public Guid Id { get; set; }
-        
+        [Required]
+        [Column(TypeName = "VARCHAR(24)")]
         public string Plate { get; set; }
-        public string Year { get; set; }
-        public string Price { get; set; }
-        public string PriceHour { get; set; }
+        [Required]
+        public int Year { get; set; }
+        [Required]
+        public float PriceHour { get; set; }
+        [Required]
         public FuelType Fuel { get; set; }
-        public string TrunkLimit { get; set; }
-        public CategoryType Category { get; set; } 
+        [Required]
+        public int TrunkLimit { get; set; }
+        [Required]
+        public CategoryType Category { get; set; }
+        [Required]
+        public float PercentagePenalty { get; set; }
+        [Required]
         public DateTime CreatedAt { get; set; }
-
+        [Column(TypeName = "VARCHAR(MAX)")]
+        public string Note;
+        public DateTime? Start { get; set; }
+        public DateTime? End { get; set; }
+        public ICollection<CarHistory> Histories { get; set; }
         public CarModel Model { get; set; }
-
     }
 }
 

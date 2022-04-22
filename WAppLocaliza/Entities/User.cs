@@ -20,10 +20,8 @@ namespace WAppLocaliza.Entities
         [Required]
         [Column(TypeName = "VARCHAR(255)")]
         public string LastName { get; set; }
-
         public DateTime CreatedAt { get; set; }
         public DateTime LastAccessAt { get; set; }
         public string[] Roles { get; set; }
-
     }
 }

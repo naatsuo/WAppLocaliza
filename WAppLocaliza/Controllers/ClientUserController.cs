@@ -20,7 +20,7 @@ namespace WAppLocaliza.Controllers
         {
             var response = _userService.AuthenticateClient(model);
             if (response == null)
-                return BadRequest(new { success = false,  message = "Username or password is incorrect" });
+                return BadRequest(new { success = false, message = "Username or password is incorrect" });
             return Ok(response);
         }
 
@@ -28,38 +28,54 @@ namespace WAppLocaliza.Controllers
         public IActionResult Create(CreateClientUserRequest model)
         {
             var response = _userService.CreateClient(model);
-            if (response == 0)
-                return Ok(new { success = true});
-            else if (response == -1)
-                return BadRequest(new { success = false, message = "Email invalid" });
-            else if (response == -2)
-                return BadRequest(new { success = false, message = "First name invalid" });
-            else if (response == -3)
-                return BadRequest(new { success = false, message = "Last name invalid" });
-            else if (response == -4)
-                return BadRequest(new { success = false, message = "Document invalid" });
-            else if (response == -5)
-                return BadRequest(new { success = false, message = "Password is too small" });
-            else if (response == -6)
-                return BadRequest(new { success = false, message = "Password is too big" });
-            else if (response == -7)
-                return BadRequest(new { success = false, message = "Document is already being used" });
-            else
-                return BadRequest(new { success = false, message = "Internal error" });
+            switch (response)
+            {
+                case 0:
+                    return Ok(new { success = true });
+                case -1:
+                    return BadRequest(new { success = false, message = "Email invalid" });
+                case -2:
+                    return BadRequest(new { success = false, message = "First name invalid" });
+                case -3:
+                    return BadRequest(new { success = false, message = "Last name invalid" });
+                case -4:
+                    return BadRequest(new { success = false, message = "Document invalid" });
+                case -5:
+                    return BadRequest(new { success = false, message = "Password is too small" });
+                case -6:
+                    return BadRequest(new { success = false, message = "Password is too big" });
+                case -7:
+                    return BadRequest(new { success = false, message = "Document is already being used" });
+                case -100:
+                    return BadRequest(new { success = false, message = "Internal error" });
+                default:
+                    return BadRequest(new { success = false });
+            }
         }
 
-        //[HttpGet("Test")]
-        //public IActionResult Test()
-        //{
-        //    return Ok(new { success = true,  message = "Test" });
-        //}
-        
-        [AuthorizeClientUser("Administrator")]
-        [HttpGet("Test")]
-        public IActionResult GetAll()
+        [AuthorizeClientUser]
+        [HttpPost("GetAllBrand")]
+        public IActionResult GetAllBrand()
         {
-            var users = _userService.GetAll();
-            return Ok(users);
+            var brands = _userService.GetAllBrand();
+            return Ok(brands);
         }
+
+        [AuthorizeClientUser]
+        [HttpPost("GetAllModel")]
+        public IActionResult GetAllModel()
+        {
+            var models = _userService.GetAllModel();
+            return Ok(models);
+        }
+
+        [AuthorizeClientUser]
+        [HttpPost("GetAllCar")]
+        public IActionResult GetAllCar()
+        {
+            var cars = _userService.GetAllCar();
+            return Ok(cars);
+        }
+
     }
 }

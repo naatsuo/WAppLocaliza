@@ -58,6 +58,7 @@ namespace WAppLocaliza.Services
                 return null;
             }
         }
+
         public AuthenticateOperatorUserResponse? AuthenticateOperator(AuthenticateOperatorUserRequest model)
         {
             try
@@ -84,7 +85,6 @@ namespace WAppLocaliza.Services
                 return null;
             }
         }
-
 
         private string GenerateJwtToken(User user)
         {
@@ -132,6 +132,16 @@ namespace WAppLocaliza.Services
 
         public int CreateClient(CreateClientUserRequest model)
         {
+            //  0 = Ok
+            // -1 = Email invalid
+            // -2 = First name invalid
+            // -3 = Last name invalid
+            // -4 = Document invalid
+            // -5 = Password is too small
+            // -6 = Password is too big
+            // -7 = Document is already being used
+            // -100 = Other
+
             // Check Email
             try
             {
@@ -161,15 +171,6 @@ namespace WAppLocaliza.Services
             {
                 try
                 {
-                    //  0 = Ok
-                    // -1 = Email invalid
-                    // -2 = First name invalid
-                    // -3 = Last name invalid
-                    // -4 = Document invalid
-                    // -5 = Password is too small
-                    // -6 = Password is too big
-                    // -7 = Document is already being used
-                    // -10 = Other
                     using (var dbContext = new ApplicationDbContext())
                     {
                         using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
@@ -206,8 +207,212 @@ namespace WAppLocaliza.Services
                 }
                 catch
                 {
-                    return -10;
+                    return -100;
                 }
+            }
+        }
+
+        public int CreateBrand(CreateBrandRequest model)
+        {
+            //  0 = Ok
+            // -1 = Check Name is too small
+            // -2 = Name is already being used
+            // -100 = Other
+
+            // Check First Name
+            if (model.Name.Length <= 1)
+                return -1;
+            try
+            {
+                using (var dbContext = new ApplicationDbContext())
+                {
+                    using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
+                    {
+                        if (dbContext.CarBrands.SingleOrDefault(i => i.Name == model.Name) is not null)
+                            return -2;
+
+                        dbContext.CarBrands.Add(new CarBrand()
+                        {
+                            Name = model.Name,
+                            Models = new List<CarModel>()
+                        });
+
+                        dbContext.SaveChanges();
+                        transaction.Commit();
+                        return 0;
+                    }
+                }
+            }
+            catch
+            {
+                return -100;
+            }
+        }
+
+        public int CreateModel(CreateModelRequest model)
+        {
+            //  0 = Ok
+            // -1 = Invalid brand
+            // -2 = Unknow brand
+            // -3 = Description is too small
+            // -4 = Description is already being used
+            // -100 = Other
+
+            Guid brandId = Guid.Empty;
+            bool isValid = Guid.TryParse(model.BrandId.ToString(), out brandId);
+
+            // Invalid Brand
+            if (!isValid)
+                return -1;
+            // Description is too small
+            else if (model.Description.Length <= 1)
+                return -3;
+            try
+            {
+                using (var dbContext = new ApplicationDbContext())
+                {
+                    using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
+                    {
+                        // Unknow brand
+                        var carBrand = dbContext.CarBrands.SingleOrDefault(i => i.Id == brandId);
+                        if (carBrand is null)
+                            return -2;
+                        // Description is already being used
+                        var carModel = dbContext.CarModels.SingleOrDefault(i => i.Description == model.Description);
+                        if (carModel is not null)
+                            return -4;
+
+                        carBrand.Models.Add(new CarModel()
+                        {
+                            Description = model.Description,
+                            Cars = new List<Car>()
+                        });
+
+                        dbContext.SaveChanges();
+                        transaction.Commit();
+                        return 0;
+                    }
+                }
+            }
+            catch
+            {
+                return -100;
+            }
+        }
+
+        public int CreateCar(CreateCarRequest model)
+        {
+            //  0 = Ok
+            // -1 = Invalid model
+            // -2 = Unknow model
+            // -3 = Plate is too small
+            // -4 = Plate is already being used
+            // -5 = Years out range
+            // -6 = Invalid price hour
+            // -7 = Invalid fuel -
+            // -8 = Invalid Trunk limit 
+            // -9 = invalid Category -
+            // -100 = Other
+
+            Guid modelId = Guid.Empty;
+            bool isValid = Guid.TryParse(model.ModelId.ToString(), out modelId);
+
+            // Invalid Brand
+            if (!isValid)
+                return -1;
+            // Len plate
+            else if (model.Plate.Length <= 4)
+                return -3;
+            // Range year
+            else if (model.Year < 1886 || model.Year >= (DateTime.Now.Year + 2))
+                return -5;
+            // Invalid price hour
+            else if (model.PriceHour <= 0.0f)
+                return -6;
+            // Invalid Trunk limit 
+            else if (model.TrunkLimit < 0)
+                return -8;
+            try
+            {
+                using (var dbContext = new ApplicationDbContext())
+                {
+                    using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
+                    {
+                        //Unknow model
+                        var carModel = dbContext.CarModels.SingleOrDefault(i => i.Id == modelId);
+                        if (carModel is null)
+                            return -2;
+
+                        // plate is already being used
+                        var car = dbContext.Cars.SingleOrDefault(i => i.Plate == model.Plate);
+                        if (car is not null)
+                            return -4;
+
+                        carModel.Cars.Add(new Car()
+                        {
+                            Plate = model.Plate,
+                            Year = model.Year,
+                            PriceHour = model.PriceHour,
+                            Fuel = model.Fuel,
+                            TrunkLimit = model.TrunkLimit,
+                            CreatedAt = DateTime.UtcNow,
+                            Histories = new List<CarHistory>()
+                        });
+
+                        dbContext.SaveChanges();
+                        transaction.Commit();
+                        return 0;
+                    }
+                }
+            }
+            catch
+            {
+                return -100;
+            }
+        }
+
+        public IEnumerable<CarBrand>? GetAllBrand()
+        {
+            try
+            {
+                using (var dbContext = new ApplicationDbContext())
+                {
+                    return dbContext.CarBrands.ToList();
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        public IEnumerable<CarModel>? GetAllModel()
+        {
+            try
+            {
+                using (var dbContext = new ApplicationDbContext())
+                {
+                    return dbContext.CarModels.ToList();
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        public IEnumerable<Car>? GetAllCar()
+        {
+            try
+            {
+                using (var dbContext = new ApplicationDbContext())
+                {
+                    return dbContext.Cars.ToList();
+                }
+            }
+            catch (Exception)
+            {
+                return null;
             }
         }
     }

@@ -52,7 +52,7 @@ namespace WAppLocaliza.Controllers
                     return Ok(new { message = "Success" });
                 }
             }
-            catch (Exception ex)
+            catch
             {
                 return BadRequest(new { message = "Error" });
             }
