@@ -37,10 +37,6 @@ namespace WAppLocaliza.Controllers
             }
         }
 
-        /*
-           gerar um pdf com as informãções do banco
-       */
-
         [AuthorizeOperatorUser]
         [HttpPost("CreateBrand")]
         public IActionResult CreateBrand(CreateBrandRequest model)
