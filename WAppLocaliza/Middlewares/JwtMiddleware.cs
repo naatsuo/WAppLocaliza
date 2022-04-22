@@ -46,7 +46,7 @@ namespace WAppLocaliza.Middlewares
                 }, out SecurityToken validatedToken);
                 var jwtToken = (JwtSecurityToken)validatedToken;
                 var userId = Guid.Parse(jwtToken.Claims.First(i => i.Type == "id").Value);
-                context.Items["User"] = userService.GetById(userId);
+                context.Items["User"] = userService.GetUserById(userId);
             }
             catch { }
         }

@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace WAppLocaliza.Entities
 {
@@ -46,6 +47,7 @@ namespace WAppLocaliza.Entities
         public DateTime? Start { get; set; }
         public DateTime? End { get; set; }
         public ICollection<CarHistory> Histories { get; set; }
+        [JsonIgnore]
         public CarModel Model { get; set; }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Storage;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -38,8 +39,8 @@ namespace WAppLocaliza.Services
                             foreach (var b in hashedInputBytes)
                                 hashedInputStringBuilder.Append(b.ToString("X2"));
 
-                            var a = hashedInputStringBuilder.ToString();
-                            var user = dbContext.ClientUsers.SingleOrDefault(i => i.Document == model.Document && i.Password == hashedInputStringBuilder.ToString());
+                            var password = hashedInputStringBuilder.ToString();
+                            var user = dbContext.ClientUsers.SingleOrDefault(i => i.Document == model.Document && i.Password == password);
                             if (user == null)
                                 return null;
 
@@ -67,16 +68,27 @@ namespace WAppLocaliza.Services
                 {
                     using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
                     {
-                        var user = dbContext.OperatorUsers.SingleOrDefault(i => i.Number == model.Number && i.Password == model.Password);
-                        if (user == null)
-                            return null;
+                        var bytes = Encoding.UTF8.GetBytes(model.Password);
+                        using (var hash = SHA512.Create())
+                        {
+                            var hashedInputBytes = hash.ComputeHash(bytes);
+                            var hashedInputStringBuilder = new StringBuilder(128);
+                            
+                            foreach (var b in hashedInputBytes)
+                                hashedInputStringBuilder.Append(b.ToString("X2"));
 
-                        user.LastAccessAt = DateTime.UtcNow;
-                        dbContext.SaveChanges();
-                        transaction.Commit();
+                            var password = hashedInputStringBuilder.ToString();
+                            var user = dbContext.OperatorUsers.SingleOrDefault(i => i.Number == model.Number && i.Password == password);
+                            if (user == null)
+                                return null;
 
-                        var token = GenerateJwtToken(user);
-                        return new AuthenticateOperatorUserResponse(user, token);
+                            user.LastAccessAt = DateTime.UtcNow;
+                            dbContext.SaveChanges();
+                            transaction.Commit();
+
+                            var token = GenerateJwtToken(user);
+                            return new AuthenticateOperatorUserResponse(user, token);
+                        }
                     }
                 }
             }
@@ -115,13 +127,34 @@ namespace WAppLocaliza.Services
             }
         }
 
-        public User? GetById(Guid userId)
+        public User? GetUserById(Guid userId)
         {
             try
             {
                 using (var dbContext = new ApplicationDbContext())
                 {
-                    return dbContext.ClientUsers.SingleOrDefault(i => i.Id == userId);
+                    var clientUser = dbContext.ClientUsers.SingleOrDefault(i => i.Id == userId);
+                    var operatorUser = dbContext.OperatorUsers.SingleOrDefault(i => i.Id == userId);
+                    if (clientUser is not null)
+                        return clientUser;
+                    else if (operatorUser is not null)
+                        return operatorUser;
+                    else 
+                        return null;
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+        public User? GetOperatorById(Guid userId)
+        {
+            try
+            {
+                using (var dbContext = new ApplicationDbContext())
+                {
+                    return dbContext.OperatorUsers.SingleOrDefault(i => i.Id == userId);
                 }
             }
             catch (Exception)
@@ -274,16 +307,21 @@ namespace WAppLocaliza.Services
                     using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
                     {
                         // Unknow brand
-                        var carBrand = dbContext.CarBrands.SingleOrDefault(i => i.Id == brandId);
+                        var carBrand = dbContext.CarBrands
+                            .Include(i => i.Models)
+                            .SingleOrDefault(i => i.Id == brandId);
                         if (carBrand is null)
                             return -2;
+
                         // Description is already being used
-                        var carModel = dbContext.CarModels.SingleOrDefault(i => i.Description == model.Description);
+                        var carModel = dbContext.CarModels
+                            .SingleOrDefault(i => i.Description == model.Description);
                         if (carModel is not null)
                             return -4;
 
                         carBrand.Models.Add(new CarModel()
                         {
+                            Name = model.Name,
                             Description = model.Description,
                             Cars = new List<Car>()
                         });
@@ -339,7 +377,9 @@ namespace WAppLocaliza.Services
                     using (IDbContextTransaction transaction = dbContext.Database.BeginTransaction())
                     {
                         //Unknow model
-                        var carModel = dbContext.CarModels.SingleOrDefault(i => i.Id == modelId);
+                        var carModel = dbContext.CarModels
+                            .Include(i => i.Cars)
+                            .SingleOrDefault(i => i.Id == modelId);
                         if (carModel is null)
                             return -2;
 
@@ -377,7 +417,9 @@ namespace WAppLocaliza.Services
             {
                 using (var dbContext = new ApplicationDbContext())
                 {
-                    return dbContext.CarBrands.ToList();
+                    return dbContext.CarBrands
+                        .Include(i => i.Models)
+                        .ToList();
                 }
             }
             catch (Exception)
@@ -392,7 +434,10 @@ namespace WAppLocaliza.Services
             {
                 using (var dbContext = new ApplicationDbContext())
                 {
-                    return dbContext.CarModels.ToList();
+                    return dbContext.CarModels
+                        .Include(i => i.Cars)
+                        .Include(i => i.Brand)
+                        .ToList();
                 }
             }
             catch (Exception)
@@ -407,7 +452,12 @@ namespace WAppLocaliza.Services
             {
                 using (var dbContext = new ApplicationDbContext())
                 {
-                    return dbContext.Cars.ToList();
+                    return dbContext.Cars
+                        .Include(i => i.Model)
+                        .ThenInclude(i => i.Brand)
+                        .Include(i => i.Histories)
+                        .ThenInclude(i => i.CheckList)
+                        .ToList();
                 }
             }
             catch (Exception)

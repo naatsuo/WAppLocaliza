@@ -13,8 +13,8 @@ namespace WAppLocaliza.Services
         
         IEnumerable<ClientUser>? GetAll();
         
-        User? GetById(Guid userId);
-        
+        User? GetUserById(Guid userId);
+
         int CreateBrand(CreateBrandRequest model);
         
         int CreateModel(CreateModelRequest model);
